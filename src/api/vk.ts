@@ -27,25 +27,75 @@ async function vkRequest<T>(
   params: Record<string, string | number>,
   token: string,
 ): Promise<T> {
-  const baseUrl = import.meta.env.DEV
-    ? `/vkapi/method/${method}`
-    : `https://api.vk.com/method/${method}`;
-  const url = new URL(baseUrl, window.location.origin);
-  url.searchParams.set("access_token", token);
-  url.searchParams.set("v", VK_V);
-  Object.entries(params).forEach(([k, v]) =>
-    url.searchParams.set(k, String(v)),
-  );
+  return new Promise((resolve, reject) => {
+    const callbackName = `vk_cb_${Date.now()}_${Math.random().toString(36).slice(2)}`;
 
-  const res = await fetch(url.toString());
-  const data = await res.json();
-
-  if (data.error)
-    throw new Error(
-      `VK Error ${data.error.error_code}: ${data.error.error_msg}`,
+    const url = new URL(`https://api.vk.com/method/${method}`);
+    url.searchParams.set("access_token", token);
+    url.searchParams.set("v", VK_V);
+    url.searchParams.set("callback", callbackName);
+    Object.entries(params).forEach(([k, v]) =>
+      url.searchParams.set(k, String(v)),
     );
-  return data.response as T;
+
+    const script = document.createElement("script");
+    script.src = url.toString();
+
+    const timer = setTimeout(() => {
+      cleanup();
+      reject(new Error("VK request timeout"));
+    }, 15000);
+
+    function cleanup() {
+      clearTimeout(timer);
+      delete (window as Record<string, unknown>)[callbackName];
+      script.remove();
+    }
+
+    (window as Record<string, unknown>)[callbackName] = (data: {
+      error?: { error_code: number; error_msg: string };
+      response: T;
+    }) => {
+      cleanup();
+      if (data.error) {
+        reject(
+          new Error(
+            `VK Error ${data.error.error_code}: ${data.error.error_msg}`,
+          ),
+        );
+      } else {
+        resolve(data.response);
+      }
+    };
+
+    document.head.appendChild(script);
+  });
 }
+
+// async function vkRequest<T>(
+//   method: string,
+//   params: Record<string, string | number>,
+//   token: string,
+// ): Promise<T> {
+//   const baseUrl = import.meta.env.DEV
+//     ? `/vkapi/method/${method}`
+//     : `https://api.vk.com/method/${method}`;
+//   const url = new URL(baseUrl, window.location.origin);
+//   url.searchParams.set("access_token", token);
+//   url.searchParams.set("v", VK_V);
+//   Object.entries(params).forEach(([k, v]) =>
+//     url.searchParams.set(k, String(v)),
+//   );
+
+//   const res = await fetch(url.toString());
+//   const data = await res.json();
+
+//   if (data.error)
+//     throw new Error(
+//       `VK Error ${data.error.error_code}: ${data.error.error_msg}`,
+//     );
+//   return data.response as T;
+// }
 
 export async function fetchPostsInRange(
   token: string,
