@@ -48,11 +48,11 @@ async function vkRequest<T>(
 
     function cleanup() {
       clearTimeout(timer);
-      delete (window as Record<string, unknown>)[callbackName];
+      delete (window as unknown as Record<string, unknown>)[callbackName];
       script.remove();
     }
 
-    (window as Record<string, unknown>)[callbackName] = (data: {
+    (window as unknown as Record<string, unknown>)[callbackName] = (data: {
       error?: { error_code: number; error_msg: string };
       response: T;
     }) => {
