@@ -30,6 +30,11 @@ import {
   Info,
   Refresh,
 } from "@mui/icons-material";
+import { DatePicker } from "@mui/x-date-pickers/DatePicker";
+import { LocalizationProvider } from "@mui/x-date-pickers/LocalizationProvider";
+import { AdapterDayjs } from "@mui/x-date-pickers/AdapterDayjs";
+import dayjs, { Dayjs } from "dayjs";
+import "dayjs/locale/ru";
 import {
   fetchPostsInRange,
   fetchLikes,
@@ -62,28 +67,14 @@ interface Progress {
   label: string;
 }
 
-function toUnix(dateStr: string): number {
-  return Math.floor(new Date(dateStr).getTime() / 1000);
-}
-
-function todayStr(): string {
-  return new Date().toISOString().slice(0, 10);
-}
-
-function monthAgoStr(): string {
-  const d = new Date();
-  d.setMonth(d.getMonth() - 1);
-  return d.toISOString().slice(0, 10);
-}
-
 export default function App() {
   const [token, setToken] = useState<string>(
     () => localStorage.getItem(STORAGE_KEY) || "",
   );
   const [showToken, setShowToken] = useState<boolean>(false);
   const [ownerId, setOwnerId] = useState<string>("-182391115");
-  const [dateFrom, setDateFrom] = useState<string>(monthAgoStr());
-  const [dateTo, setDateTo] = useState<string>(todayStr());
+  const [dateFrom, setDateFrom] = useState<Dayjs | null>(null);
+  const [dateTo, setDateTo] = useState<Dayjs | null>(null);
 
   const [status, setStatus] = useState<Status>("idle");
   const [progress, setProgress] = useState<Progress>({
@@ -148,8 +139,18 @@ export default function App() {
       const ownerInfo = await fetchOwnerInfo(token, ownerId);
 
       setProgress({ step: "posts", value: 0, label: "Загружаем посты..." });
-      const from = toUnix(dateFrom);
-      const to = toUnix(dateTo) + 86399;
+
+      if (!dateFrom) {
+        setError("Введите дату начала");
+        return;
+      }
+      if (!dateTo) {
+        setError("Введите дату окончания");
+        return;
+      }
+
+      const from = dateFrom.startOf("day").unix();
+      const to = dateTo.endOf("day").unix();
 
       const posts = await fetchPostsInRange(
         token,
@@ -321,42 +322,45 @@ export default function App() {
               />
             </Box>
 
-            <Stack direction={{ xs: "column", sm: "row" }} spacing={2}>
-              <Box sx={{ flex: 1 }}>
-                <Typography
-                  variant="subtitle2"
-                  color="text.secondary"
-                  sx={{ mb: 1 }}
-                >
-                  Дата с
-                </Typography>
-                <TextField
-                  fullWidth
-                  size="small"
-                  type="date"
-                  value={dateFrom}
-                  onChange={(e) => setDateFrom(e.target.value)}
-                  slotProps={{ inputLabel: { shrink: true } }}
-                />
-              </Box>
-              <Box sx={{ flex: 1 }}>
-                <Typography
-                  variant="subtitle2"
-                  color="text.secondary"
-                  sx={{ mb: 1 }}
-                >
-                  Дата по
-                </Typography>
-                <TextField
-                  fullWidth
-                  size="small"
-                  type="date"
-                  value={dateTo}
-                  onChange={(e) => setDateTo(e.target.value)}
-                  slotProps={{ inputLabel: { shrink: true } }}
-                />
-              </Box>
-            </Stack>
+            <LocalizationProvider dateAdapter={AdapterDayjs} adapterLocale="ru">
+              <Stack direction={{ xs: "column", sm: "row" }} spacing={2}>
+                <Box sx={{ flex: 1 }}>
+                  <Typography
+                    variant="subtitle2"
+                    color="text.secondary"
+                    sx={{ mb: 1 }}
+                  >
+                    Дата с
+                  </Typography>
+                  <DatePicker
+                    value={dateFrom}
+                    onChange={(val) => setDateFrom(val)}
+                    maxDate={dayjs()}
+                    slotProps={{
+                      textField: { fullWidth: true, size: "small" },
+                    }}
+                  />
+                </Box>
+                <Box sx={{ flex: 1 }}>
+                  <Typography
+                    variant="subtitle2"
+                    color="text.secondary"
+                    sx={{ mb: 1 }}
+                  >
+                    Дата по
+                  </Typography>
+                  <DatePicker
+                    value={dateTo}
+                    onChange={(val) => setDateTo(val)}
+                    minDate={dateFrom ?? undefined}
+                    maxDate={dayjs()}
+                    slotProps={{
+                      textField: { fullWidth: true, size: "small" },
+                    }}
+                  />
+                </Box>
+              </Stack>
+            </LocalizationProvider>
 
             <Button
               variant="contained"
