@@ -125,6 +125,10 @@ export default function App() {
       setError("Введите ID группы или пользователя");
       return;
     }
+    if (!dateFrom || !dateTo) {
+      setError("Выберите даты");
+      return;
+    }
 
     setStatus("running");
     setError("");
@@ -139,15 +143,6 @@ export default function App() {
       const ownerInfo = await fetchOwnerInfo(token, ownerId);
 
       setProgress({ step: "posts", value: 0, label: "Загружаем посты..." });
-
-      if (!dateFrom) {
-        setError("Введите дату начала");
-        return;
-      }
-      if (!dateTo) {
-        setError("Введите дату окончания");
-        return;
-      }
 
       const from = dateFrom.startOf("day").unix();
       const to = dateTo.endOf("day").unix();
@@ -195,6 +190,8 @@ export default function App() {
         label: `Получаем имена ${userIds.length} пользователей...`,
       });
       const usersRaw = await fetchUsers(token, userIds);
+
+      console.log(usersRaw);
 
       const users: VKUser[] = userIds.map((id) => {
         const raw = usersRaw.find((u) => u.id === id);

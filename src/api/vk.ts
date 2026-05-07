@@ -72,31 +72,6 @@ async function vkRequest<T>(
   });
 }
 
-// async function vkRequest<T>(
-//   method: string,
-//   params: Record<string, string | number>,
-//   token: string,
-// ): Promise<T> {
-//   const baseUrl = import.meta.env.DEV
-//     ? `/vkapi/method/${method}`
-//     : `https://api.vk.com/method/${method}`;
-//   const url = new URL(baseUrl, window.location.origin);
-//   url.searchParams.set("access_token", token);
-//   url.searchParams.set("v", VK_V);
-//   Object.entries(params).forEach(([k, v]) =>
-//     url.searchParams.set(k, String(v)),
-//   );
-
-//   const res = await fetch(url.toString());
-//   const data = await res.json();
-
-//   if (data.error)
-//     throw new Error(
-//       `VK Error ${data.error.error_code}: ${data.error.error_msg}`,
-//     );
-//   return data.response as T;
-// }
-
 export async function fetchPostsInRange(
   token: string,
   ownerId: string,
@@ -178,9 +153,12 @@ export async function fetchUsers(
   userIds: number[],
 ): Promise<VKRawUser[]> {
   if (!userIds.length) return [];
-  const chunks = chunkArray(userIds, 300);
+  const chunks = chunkArray(userIds, 100);
+
   const results: VKRawUser[] = [];
-  for (const chunk of chunks) {
+  for (let i = 0; i < chunks.length; i++) {
+    const chunk = chunks[i];
+
     const users = await vkRequest<VKRawUser[]>(
       "users.get",
       { user_ids: chunk.join(",") },
